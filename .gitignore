@@ -1,0 +1,5 @@
+.DS_Store
+.history
+.vscode
+jsPDF-1.3.2/*
+mergemark_uploads/*

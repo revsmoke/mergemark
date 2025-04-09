@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MergeMark - Combined Document to PDF</title>
+    <style>
+     /* CSS Styles with consistent spacing */
+:root {
+  --primary-color: #1a365d;
+  --secondary-color: #2c5282;
+  --accent-color: #4299e1;
+  --danger-color: #e53e3e;
+  --warning-color: #dd6b20;
+  --text-color: #2d3748;
+  --light-gray: #e2e8f0;
+  --very-light-gray: #f8fafc;
+  --border-radius: 6px;
+  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --transition: all 0.3s ease;
+  /* Adding standard spacing variables */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  --max-content-width: 900px;
+  --container-padding: var(--spacing-lg);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.8;
+  color: var(--text-color);
+  background-color: var(--very-light-gray);
+  margin: 0;
+  padding: 0 0 0 0;
+}
+
+.container {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+}
+
+nav {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+  background-color: white;
+  color: var(--primary-color);
+  padding: var(--spacing-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid var(--light-gray);
+  box-shadow: var(--box-shadow);
+}
+
+nav ul {
+  display: flex;
+  list-style: none;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: 0;
+}
+
+ul li, ol li {
+  margin-right: var(--spacing-sm);
+  margin-left: var(--spacing-sm);
+}
+
+h1 {
+  font-size: 2rem;
+  color: var(--primary-color);
+  margin: var(--spacing-lg) 0;
+  font-weight: 500;
+  letter-spacing: 1px;
+  page-break-before: avoid;
+}
+
+h2 {
+  font-size: 1.5rem;
+  color: var(--secondary-color);
+  border-bottom: 2px solid var(--accent-color);
+  padding-bottom: var(--spacing-sm);
+  margin-top: var(--spacing-xl);
+  font-weight: 400;
+  page-break-after: avoid;
+}
+
+h3 {
+  color: var(--primary-color);
+  font-size: 1.2rem;
+  margin-bottom: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+a {
+  font-size: 1rem;
+  color: var(--secondary-color);
+}
+
+pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: #fff;
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--light-gray);
+  box-shadow: var(--box-shadow);
+  font-family: "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #2d3748;
+  page-break-inside: avoid;
+  margin: var(--spacing-md) 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--spacing-sm) 0;
+}
+
+table th,
+table td {
+  border: 1px solid var(--light-gray);
+  padding: var(--spacing-xs);
+  text-align: left;
+}
+
+dialog {
+  margin: auto;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+footer {
+  text-align: center;
+  padding: var(--spacing-sm);
+  background-color: white;
+  border-top: 1px solid var(--light-gray);
+  max-width: var(--max-content-width);
+  margin: var(--spacing-xl) auto;
+}
+
+#intro {
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  border: 1px solid var(--light-gray);
+}
+
+.file-section {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-md);
+  background-color: white;
+  border-radius: var(--border-radius);
+  box-shadow: none;
+  transition: var(--transition);
+  page-break-inside: avoid;
+}
+
+.file-section:hover {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.file-section h2 {
+  margin-top: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+  text-transform: uppercase;
+}
+
+.file-section h2 a {
+  text-transform: lowercase;
+}
+
+.controls {
+  background-color: white;
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--light-gray);
+  box-shadow: var(--box-shadow);
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.button {
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: 1rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.button:hover:not(:disabled) {
+  background-color: var(--secondary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button.danger {
+  background-color: var(--danger-color);
+}
+
+.button.danger:hover:not(:disabled) {
+  background-color: #c53030;
+}
+
+.button.warning {
+  background-color: var(--warning-color);
+}
+
+.button.warning:hover:not(:disabled) {
+  background-color: #b75c1d;
+}
+
+.file-input-container {
+  display: inline-block;
+  position: relative;
+}
+
+.file-input-label {
+  background-color: white;
+  color: var(--secondary-color);
+  border: 2px solid var(--accent-color);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  display: inline-block;
+  transition: var(--transition);
+  font-weight: 500;
+}
+
+.file-input-label:hover {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+#fileInput {
+  position: absolute;
+  left: -9999px;
+}
+
+#reorderContainer {
+  display: none;
+}
+
+.drop-zone {
+  border: 3px dashed var(--light-gray);
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--secondary-color);
+  margin-top: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+  background-color: #fff;
+  flex-basis: 100%;
+  order: 3;
+}
+
+.drop-zone.drag-over-page {
+  border-color: var(--accent-color);
+  background-color: rgba(66, 153, 225, 0.05);
+}
+
+.document-section-reorder-container {
+  margin: var(--spacing-lg) 0;
+  background-color: white;
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  border: 1px solid var(--light-gray);
+}
+
+#reorderPlaceholder {
+  color: #718096;
+  font-style: italic;
+  text-align: center;
+  padding: var(--spacing-sm);
+}
+
+#document-section-reorder-list {
+  list-style: decimal;
+  padding-left: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+#document-section-reorder-list li {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--light-gray);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-xs);
+  cursor: move;
+  background: white;
+  transition: var(--transition);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  outline: none;
+}
+
+#document-section-reorder-list li:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+#document-section-reorder-list li:hover {
+  background-color: var(--very-light-gray);
+  border-color: var(--accent-color);
+}
+
+#document-section-reorder-list li.dragging {
+  opacity: 0.5;
+  background: var(--light-gray);
+}
+
+#document-section-reorder-list li.drag-over {
+  border-top: 2px solid var(--accent-color);
+}
+
+.delete-btn {
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 0.85rem;
+  margin-left: var(--spacing-sm);
+}
+
+.delete-btn:hover {
+  background-color: #c53030;
+}
+
+.modal-content {
+  margin: auto;
+  background-color: white;
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  width: 450px;
+  max-width: 90%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.modal-title {
+  color: var(--primary-color);
+  margin-top: 0;
+  font-size: 1.4rem;
+}
+
+.modal-message {
+  margin: var(--spacing-sm) 0;
+  line-height: 1.6;
+}
+
+.modal-actions {
+  margin-top: var(--spacing-md);
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.modal-cancel {
+  background-color: var(--light-gray);
+  color: var(--text-color);
+}
+
+.modal-cancel:hover {
+  background-color: #cbd5e0;
+}
+
+.modal-confirm.delete {
+  background-color: var(--danger-color);
+}
+
+.modal-confirm.delete:hover {
+  background-color: #c53030;
+}
+
+.modal-confirm.clear {
+  background-color: var(--warning-color);
+}
+
+.modal-confirm.clear:hover {
+  background-color: #b75c1d;
+}
+
+.help-details {
+  margin-top: var(--spacing-xl);
+}
+
+.help-details summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--secondary-color);
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius);
+  background-color: white;
+  box-shadow: var(--box-shadow);
+  display: inline-block;
+  border: 1px solid var(--light-gray);
+  width: 100%;
+}
+
+.help-details summary:hover {
+  background-color: var(--light-gray);
+}
+
+.help-container {
+  container-type: inline-size;
+  container-name: help-container;
+  background-color: white;
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-xs);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  border: 1px solid var(--light-gray);
+  font-size: 0.95rem;
+}
+
+.help-container h2 {
+  font-size: 1.4rem;
+  margin-top: var(--spacing-lg);
+}
+
+.help-container .tip-box,
+.help-container .use-case {
+  background-color: var(--very-light-gray);
+  border-left: 3px solid var(--accent-color);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin: var(--spacing-xs) 0;
+  border-radius: 4px;
+}
+
+.help-container .tip-title {
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.help-container .footer {
+  text-align: center;
+  margin-top: var(--spacing-lg);
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+.loading-indicator {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.loading-indicator-container {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--secondary-color);
+  font-weight: 500;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@container help-container (max-width: 600px) {
+  .help-container {
+    font-size: 0.85rem;
+  }
+}
+
+@media print {
+  /* Print styles remain relevant for potential browser printing */
+  body {
+    margin: 0;
+    padding: 1.5cm;
+    background-color: white;
+    font-size: 11pt;
+    color: black;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .container {
+    max-width: 100%;
+    padding: 0;
+  }
+  h1 {
+    font-size: 20pt;
+    color: black;
+    text-align: left;
+    margin: 0 0 1cm 0;
+  }
+  h2 {
+    font-size: 16pt;
+    margin-top: 1cm;
+    page-break-after: avoid;
+    color: black;
+    border-bottom: 1px solid #aaa;
+    padding-bottom: 0.3cm;
+  }
+  pre {
+    background-color: #fdfdfd;
+    border: 1px solid #ddd;
+    box-shadow: none;
+    font-size: 9pt;
+    margin: 0.5cm 0;
+    padding: 0.5cm;
+    page-break-inside: avoid;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .file-section {
+    margin-bottom: 1cm;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    page-break-inside: avoid;
+    background-color: white;
+  }
+  .file-section:hover {
+    border: none;
+  }
+  a,
+  a:visited {
+    color: #3366cc;
+    text-decoration: underline;
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+  </style>
+  </head>
+  <body>
+    <nav>
+      <img id="logo" src="mergemark_logo.svg" alt="MergeMark Logo" style="width: 50px; height: auto;"> 
+      <ul>
+        <li><a href="https://mergemark.app">MergeMark</a></li>
+        <li><a href="https://mergemark.app/help">Help</a></li>
+        <li><a id="contactLink" href="https://mergemark.app/contact">Contact</a></li>
+      </ul>
+    </nav>
+    <div class="container">
+      <h1>MergeMark</h1>
+      <p id="intro" class="no-print">
+        MergeMark combines multiple text or markdown files into a single PDF
+        containing the extracted text.
+      </p>
+
+      <div class="controls no-print">
+        <div class="file-input-container">
+          <label for="fileInput" class="file-input-label">Select Files</label>
+          <input
+            type="file"
+            id="fileInput"
+            multiple
+            accept=".txt,.md,text/plain,text/markdown"
+          />
+        </div>
+        <button id="printButton" class="button" disabled>Print Document</button>
+        <button id="generateButton" class="button" disabled>
+          Generate PDF (Text Only)
+        </button>
+        <button id="clearAllButton" class="button warning" disabled>
+          Clear All
+        </button>
+        <div id="dropZone" class="drop-zone no-print">
+          Drag & Drop Text or Markdown Files Here
+        </div>
+        <div
+          id="loadingIndicator"
+          class="loading-indicator-container no-print"
+          style="display: none"
+        >
+          <span>Generating PDF...</span>
+          <span class="loading-indicator"></span>
+        </div>
+      </div>
+
+      <div
+        id="reorderContainer"
+        class="document-section-reorder-container no-print"
+      >
+        <h3>Document Sections (Drag to Reorder)</h3>
+        <div id="reorderPlaceholder">
+          Upload or drop files to see sections here.
+        </div>
+        <ol id="document-section-reorder-list"></ol>
+      </div>
+
+      <main id="content"></main>
+
+      <details class="no-print help-details">
+        <summary>Help / Instructions</summary>
+        <div class="help-container">
+          <h2>Getting Started with DocuMelD</h2>
+          <p>
+            Combine multiple text (.txt) or markdown (.md) files into a single
+            PDF.
+          </p>
+          <ol>
+            <li>
+              <strong>Upload Files:</strong> Click "Select Files" or drag & drop
+              files.
+            </li>
+            <li>
+              <strong>Reorder Content:</strong> Drag and drop items in the list
+              to change their order.
+            </li>
+            <li>
+              <strong>Remove Content:</strong> Click the "Delete" button next to
+              any section.
+            </li>
+            <li>
+              <strong>Clear All:</strong> Click "Clear All" to remove all files.
+            </li>
+            <li>
+              <strong>Generate PDF (Text Only):</strong> Click this button to
+              create a PDF containing the plain text from each section. The PDF
+              will download automatically. **Note:** Formatting like bold text,
+              lists, and heading styles seen on screen will *not* be preserved
+              in this PDF version.
+            </li>
+          </ol>
+          <h2>Tips</h2>
+          <div class="tip-box">
+            <div class="tip-title">Markdown Support:</div>
+            Preview shows formatted markdown, but PDF export is text only.
+          </div>
+          <div class="tip-box">
+            <div class="tip-title">Text Files:</div>
+            Text content is included in the PDF.
+          </div>
+          <div class="tip-box">
+            <div class="tip-title">PDF Output:</div>
+            The generated PDF uses standard fonts and basic layout for
+            readability.
+          </div>
+          <footer class="footer">© 2025 MergeMark</footer>
+        </div>
+      </details>
+    </div>
+
+    <dialog id="confirmationModal" class="modal no-print">
+      <button id="closeConfirmationModal" class="modal-close">Close</button>
+      <div class="modal-content">
+        <h3 id="modalTitle" class="modal-title">Confirm Action</h3>
+        <p id="modalMessage" class="modal-message">Are you sure?</p>
+        <div class="modal-actions">
+          <button id="cancelBtn" class="button modal-cancel">Cancel</button>
+          <button id="confirmBtn" class="button modal-confirm">Confirm</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="contactDialog" class="modal no-print">
+      <button id="closeContactDialog" class="modal-close">Close</button>
+      <div class="modal-content">
+        <h3 id="modalTitle" class="modal-title">Contact Us</h3>
+        <p id="modalMessage" class="modal-message">Please fill out the form below to contact us.</p>
+      </div>
+    </dialog>
+    <footer>
+      <p>© 2025 MergeMark</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+      integrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <script defer>
+      document.addEventListener("DOMContentLoaded", function () {
+        // --- DOM Elements ---
+        const fileInput = document.getElementById("fileInput");
+        const contentContainer = document.getElementById("content");
+        const generateButton = document.getElementById("generateButton");
+        const printButton = document.getElementById("printButton");
+        const clearAllButton = document.getElementById("clearAllButton");
+        const reorderList = document.getElementById(
+          "document-section-reorder-list"
+        );
+        const reorderContainer = document.getElementById("reorderContainer");
+        const reorderPlaceholder =
+          document.getElementById("reorderPlaceholder");
+        const confirmationModal = document.getElementById("confirmationModal");
+        const modalTitle = document.getElementById("modalTitle");
+        const modalMessage = document.getElementById("modalMessage");
+        const confirmBtn = document.getElementById("confirmBtn");
+        const cancelBtn = document.getElementById("cancelBtn");
+        const closeConfirmationModal = document.getElementById("closeConfirmationModal");
+        const dropZone = document.getElementById("dropZone");
+        const loadingIndicator = document.getElementById("loadingIndicator");
+        const contactDialog = document.getElementById("contactDialog");
+        const closeContactDialog = document.getElementById("closeContactDialog");
+        const contactLink = document.getElementById("contactLink");
+
+        // --- State Variables ---
+        let draggedLi = null;
+        let sectionCounter = 0;
+        let pendingAction = null;
+        let itemToDelete = null;
+
+        // --- Utility Functions (showLoading, updateUIState - no changes) ---
+        function showLoading(isLoading) {
+          loadingIndicator.style.display = isLoading ? "inline-flex" : "none";
+          generateButton.disabled = isLoading;
+          printButton.disabled = isLoading;
+          clearAllButton.disabled = isLoading;
+          fileInput.disabled = isLoading;
+          reorderList.style.pointerEvents = isLoading ? "none" : "auto";
+          reorderList.style.opacity = isLoading ? 0.7 : 1;
+        }
+        function updateUIState() {
+          const hasFiles = reorderList.children.length > 0;
+          reorderContainer.style.display = "block";
+          reorderPlaceholder.style.display = hasFiles ? "none" : "block";
+          reorderList.style.display = hasFiles ? "block" : "none";
+          generateButton.disabled = !hasFiles;
+          clearAllButton.disabled = !hasFiles;
+          printButton.disabled = !hasFiles;
+        }
+
+        // --- File Handling (No changes needed) ---
+        function processFiles(files) {
+          showLoading(true);
+          contentContainer.innerHTML = "";
+          reorderList.innerHTML = "";
+          sectionCounter = 0;
+          let fileArray = Array.from(files);
+          fileArray = fileArray.filter(
+            (file) =>
+              file.type === "text/plain" ||
+              file.type === "text/markdown" ||
+              file.name.endsWith(".txt") ||
+              file.name.endsWith(".md")
+          );
+          if (fileArray.length === 0) {
+            showLoading(false);
+            updateUIState();
+            if (files.length > 0) {
+              alert("No valid .txt or .md files found.");
+            }
+            return;
+          }
+          fileArray.sort((a, b) => a.name.localeCompare(b.name));
+          let filesProcessed = 0;
+          fileArray.forEach((file) => {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+              try {
+                const fileContent = e.target.result;
+                const sectionId = "section_" + sectionCounter++;
+                const section = document.createElement("section");
+                section.className = "file-section";
+                section.id = sectionId;
+                const header = document.createElement("h2");
+                header.textContent = file.name;
+                section.appendChild(header);
+                if (file.name.toLowerCase().endsWith(".md")) {
+                  const contentDiv = document.createElement("div");
+                  contentDiv.innerHTML = marked.parse(fileContent);
+                  section.appendChild(contentDiv);
+                } else {
+                  const pre = document.createElement("pre");
+                  pre.textContent = fileContent;
+                  section.appendChild(pre);
+                }
+                contentContainer.appendChild(section);
+                const li = document.createElement("li");
+                li.setAttribute("data-section-id", sectionId);
+                li.setAttribute("draggable", true);
+                li.setAttribute("tabindex", "0");
+                const fileNameSpan = document.createElement("span");
+                fileNameSpan.textContent = file.name;
+                fileNameSpan.style.overflow = "hidden";
+                fileNameSpan.style.textOverflow = "ellipsis";
+                fileNameSpan.style.whiteSpace = "nowrap";
+                fileNameSpan.style.marginRight = "10px";
+                const deleteBtn = document.createElement("button");
+                deleteBtn.className = "delete-btn";
+                deleteBtn.textContent = "Delete";
+                deleteBtn.type = "button";
+                deleteBtn.addEventListener("click", (event) => {
+                  event.stopPropagation();
+                  showConfirmation("delete", {
+                    sectionId: sectionId,
+                    fileName: file.name,
+                  });
+                });
+                li.appendChild(fileNameSpan);
+                li.appendChild(deleteBtn);
+                addLiDragAndDropHandlers(li);
+                reorderList.appendChild(li);
+              } catch (error) {
+                console.error(`Error processing file ${file.name}:`, error);
+                alert(
+                  `Error processing file: ${file.name}. It might be skipped.`
+                );
+              } finally {
+                filesProcessed++;
+                if (filesProcessed === fileArray.length) {
+                  showLoading(false);
+                  updateSectionsOrderFromList();
+                  updateUIState();
+                }
+              }
+            };
+            reader.onerror = function (e) {
+              console.error("Error reading file:", file.name, e);
+              alert(`Error reading file: ${file.name}. It will be skipped.`);
+              filesProcessed++;
+              if (filesProcessed === fileArray.length) {
+                showLoading(false);
+                updateUIState();
+              }
+            };
+            reader.readAsText(file);
+          });
+        }
+
+        // --- Reordering Logic (No changes needed) ---
+        function updateSectionsOrderFromList() {
+          const fragment = document.createDocumentFragment();
+          reorderList.querySelectorAll("li").forEach((li) => {
+            const sectionId = li.getAttribute("data-section-id");
+            const sectionEl = document.getElementById(sectionId);
+            if (sectionEl) {
+              fragment.appendChild(sectionEl);
+            } else {
+              console.warn(`Section element not found for ID: ${sectionId}`);
+            }
+          });
+          contentContainer.innerHTML = "";
+          contentContainer.appendChild(fragment);
+        }
+
+        // --- LI Drag/Drop Handlers (No changes needed) ---
+        function liDragStart(e) {
+          if (e.target.classList.contains("delete-btn")) {
+            e.preventDefault();
+            return;
+          }
+          draggedLi = this;
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", this.dataset.sectionId);
+          setTimeout(() => this.classList.add("dragging"), 0);
+        }
+        function liDragOver(e) {
+          e.preventDefault();
+          const targetLi = e.target.closest("li");
+          if (!targetLi || targetLi === draggedLi) return;
+          reorderList
+            .querySelectorAll("li")
+            .forEach((li) => li.classList.remove("drag-over"));
+          targetLi.classList.add("drag-over");
+          e.dataTransfer.dropEffect = "move";
+        }
+        function liDragEnter(e) {
+          e.preventDefault();
+        }
+        function liDragLeave(e) {
+          if (!reorderList.contains(e.relatedTarget)) {
+            reorderList
+              .querySelectorAll("li")
+              .forEach((li) => li.classList.remove("drag-over"));
+          }
+        }
+        function liDrop(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const targetLi = e.target.closest("li");
+          reorderList
+            .querySelectorAll("li")
+            .forEach((li) => li.classList.remove("drag-over"));
+          if (targetLi && draggedLi !== targetLi) {
+            const rect = targetLi.getBoundingClientRect();
+            const offsetY = e.clientY - rect.top;
+            const isAfter = offsetY > rect.height / 2;
+            if (isAfter) {
+              targetLi.parentNode.insertBefore(draggedLi, targetLi.nextSibling);
+            } else {
+              targetLi.parentNode.insertBefore(draggedLi, targetLi);
+            }
+            updateSectionsOrderFromList();
+          }
+        }
+        function liDragEnd(e) {
+          if (draggedLi) {
+            draggedLi.classList.remove("dragging");
+          }
+          reorderList
+            .querySelectorAll("li")
+            .forEach((li) => li.classList.remove("drag-over"));
+          draggedLi = null;
+        }
+        function addLiDragAndDropHandlers(li) {
+          li.addEventListener("dragstart", liDragStart, false);
+          li.addEventListener("dragover", liDragOver, false);
+          li.addEventListener("dragenter", liDragEnter, false);
+          li.addEventListener("dragleave", liDragLeave, false);
+          li.addEventListener("drop", liDrop, false);
+          li.addEventListener("dragend", liDragEnd, false);
+        }
+
+        // --- File Upload via Drag and Drop (No changes needed) ---
+        function handleFileDrop(e) {
+          unhighlightDropZone();
+          let dt = e.dataTransfer;
+          let files = dt.files;
+          processFiles(files);
+        }
+        function highlightDropZone() {
+          dropZone.classList.add("drag-over-page");
+        }
+        function unhighlightDropZone() {
+          dropZone.classList.remove("drag-over-page");
+        }
+        function preventDefaults(e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+          dropZone.addEventListener(eventName, preventDefaults, false);
+          document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        ["dragenter", "dragover"].forEach((eventName) =>
+          dropZone.addEventListener(eventName, highlightDropZone, false)
+        );
+        ["dragleave", "drop"].forEach((eventName) =>
+          dropZone.addEventListener(eventName, unhighlightDropZone, false)
+        );
+        dropZone.addEventListener("drop", handleFileDrop, false);
+
+        // --- Deletion and Clear All Logic (No changes needed) ---
+        function showConfirmation(actionType, data) {
+          pendingAction = actionType;
+          confirmBtn.classList.remove("delete", "clear", "warning");
+          if (actionType === "delete") {
+            itemToDelete = data;
+            modalTitle.textContent = "Confirm Deletion";
+            modalMessage.textContent = `Are you sure you want to delete the section "${data.fileName}"?`;
+            confirmBtn.textContent = "Delete";
+            confirmBtn.classList.add("delete");
+          } else if (actionType === "clearAll") {
+            modalTitle.textContent = "Confirm Clear All";
+            modalMessage.textContent =
+              "Are you sure you want to remove all loaded sections?";
+            confirmBtn.textContent = "Clear All";
+            confirmBtn.classList.add("warning");
+          } else {
+            return;
+          }
+          confirmationModal.showModal();
+          confirmBtn.focus();
+        }
+        function closeConfirmation() {
+          confirmationModal.close();
+          pendingAction = null;
+          itemToDelete = null;
+        }
+        function performConfirmedAction() {
+          if (pendingAction === "delete" && itemToDelete) {
+            const sectionElement = document.getElementById(
+              itemToDelete.sectionId
+            );
+            if (sectionElement) sectionElement.remove();
+            const listItem = reorderList.querySelector(
+              `li[data-section-id="${itemToDelete.sectionId}"]`
+            );
+            if (listItem) listItem.remove();
+            console.log(`Deleted section: ${itemToDelete.fileName}`);
+          } else if (pendingAction === "clearAll") {
+            contentContainer.innerHTML = "";
+            reorderList.innerHTML = "";
+            sectionCounter = 0;
+            fileInput.value = null;
+            console.log("Cleared all sections.");
+          }
+          closeConfirmation();
+          updateUIState();
+        }
+
+        // --- Event Listeners ---
+        fileInput.addEventListener("change", function () {
+          if (fileInput.files.length > 0) {
+            processFiles(fileInput.files);
+          }
+        });
+
+        // --- REWRITTEN PDF Generation using jsPDF.text() ---
+        generateButton.addEventListener("click", function () {
+          showLoading(true);
+
+          if (typeof jspdf === "undefined") {
+            alert("Error: jsPDF library not loaded. Cannot generate PDF.");
+            showLoading(false);
+            return;
+          }
+          const { jsPDF } = jspdf; // Get the constructor
+
+          try {
+            const doc = new jsPDF({
+              // Default: Portrait, pt, A4
+              orientation: "p",
+              unit: "pt",
+              format: "a4",
+            });
+
+            const pageHeight = doc.internal.pageSize.height;
+            const pageWidth = doc.internal.pageSize.width;
+            const margin = 40; // Page margin in points
+            const maxLineWidth = pageWidth - 2 * margin; // Max width for text
+            const headerFontSize = 14;
+            const bodyFontSize = 10;
+            const defaultLineHeight = bodyFontSize * 1.2;
+            const headerLineHeight = headerFontSize * 1.2;
+            const sectionSpacing = defaultLineHeight * 1.5; // Extra space between sections
+
+            let y = margin; // Current Y position, starts at top margin
+
+            // Function to add text lines and handle page breaks
+            function addWrappedText(
+              text,
+              fontSize,
+              lineHeight,
+              isBold = false
+            ) {
+              if (y + lineHeight > pageHeight - margin) {
+                // Check if space needed exceeds page height
+                doc.addPage();
+                y = margin; // Reset Y for new page
+              }
+
+              doc.setFontSize(fontSize);
+              doc.setFont(undefined, isBold ? "bold" : "normal"); // Set font style
+
+              const lines = doc.splitTextToSize(text, maxLineWidth); // Wrap text
+
+              lines.forEach((line) => {
+                if (y + lineHeight > pageHeight - margin) {
+                  // Re-check for each line
+                  doc.addPage();
+                  y = margin;
+                }
+                doc.text(line, margin, y);
+                y += lineHeight; // Move Y down
+              });
+              // y += lineHeight * 0.2; // Add tiny space after block
+            }
+
+            // Iterate through the actual content sections in order
+            const sections = contentContainer.querySelectorAll(".file-section");
+            if (sections.length === 0) {
+              alert("No content sections found to generate PDF.");
+              showLoading(false);
+              return;
+            }
+
+            sections.forEach((section, index) => {
+              // --- Add Section Header (Filename) ---
+              const headerElement = section.querySelector("h2");
+              const headerText = headerElement
+                ? headerElement.textContent.trim()
+                : `Section ${index + 1}`;
+
+              // Add space before new section header (except first one)
+              if (index > 0) {
+                y += sectionSpacing;
+              }
+
+              addWrappedText(
+                headerText,
+                headerFontSize,
+                headerLineHeight,
+                true
+              ); // Add header text (bold)
+              y += headerLineHeight * 0.3; // Add a bit more space after header
+
+              // --- Add Section Content ---
+              const contentElement =
+                section.querySelector("div") || section.querySelector("pre");
+              // Use innerText to try and preserve line breaks from <pre> tags better
+              const contentText = contentElement
+                ? contentElement.innerText.trim()
+                : "";
+
+              if (contentText) {
+                addWrappedText(
+                  contentText,
+                  bodyFontSize,
+                  defaultLineHeight,
+                  false
+                ); // Add body text
+              }
+            }); // End loop through sections
+
+            doc.save("MergeMark_Text_Report.pdf"); // Save the PDF
+          } catch (error) {
+            console.error("Error generating PDF with jsPDF:", error);
+            alert(
+              `An error occurred while generating the PDF (using jsPDF.text). Please check the console. Error: ${error.message}`
+            );
+          } finally {
+            showLoading(false); // Hide loading indicator
+          }
+        });
+
+        printButton.addEventListener("click", function () {
+          window.print(); // Trigger browser's print/save PDF dialog
+        });
+
+        clearAllButton.addEventListener("click", function () {
+          showConfirmation("clearAll");
+        });
+
+        // Modal Button Listeners
+        contactLink.addEventListener("click", function (e) {
+          e.preventDefault();
+          contactDialog.showModal();
+        });
+        closeContactDialog.addEventListener("click", function () {
+          contactDialog.close();
+        });
+        confirmBtn.addEventListener("click", performConfirmedAction);
+        cancelBtn.addEventListener("click", closeConfirmation);
+        closeConfirmationModal.addEventListener("click", closeConfirmation);
+        // --- Initial Setup ---
+        updateUIState();
+      });
+    </script>
+  </body>
+</html>
