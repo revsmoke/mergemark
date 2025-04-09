@@ -697,6 +697,29 @@ footer {
       <div class="modal-content">
         <h3 id="modalTitle" class="modal-title">Contact Us</h3>
         <p id="modalMessage" class="modal-message">Please fill out the form below to contact us.</p>
+        <!-- Add Contact Form -->
+        <form id="contactForm" style="text-align: left; margin-top: var(--spacing-md);">
+          <div style="margin-bottom: var(--spacing-sm);">
+            <label for="contactName" style="display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Name:</label>
+            <input type="text" id="contactName" name="contactName" required style="width: 100%; padding: var(--spacing-xs); border: 1px solid var(--light-gray); border-radius: var(--border-radius);">
+          </div>
+          <div style="margin-bottom: var(--spacing-sm);">
+            <label for="contactEmail" style="display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Email:</label>
+            <input type="email" id="contactEmail" name="contactEmail" required style="width: 100%; padding: var(--spacing-xs); border: 1px solid var(--light-gray); border-radius: var(--border-radius);">
+          </div>
+          <div style="margin-bottom: var(--spacing-sm);">
+            <label for="contactSubject" style="display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Subject:</label>
+            <input type="text" id="contactSubject" name="contactSubject" required style="width: 100%; padding: var(--spacing-xs); border: 1px solid var(--light-gray); border-radius: var(--border-radius);">
+          </div>
+          <div style="margin-bottom: var(--spacing-md);">
+            <label for="contactMessage" style="display: block; margin-bottom: var(--spacing-xs); font-weight: 500;">Message:</label>
+            <textarea id="contactMessage" name="contactMessage" rows="4" required style="width: 100%; padding: var(--spacing-xs); border: 1px solid var(--light-gray); border-radius: var(--border-radius); resize: vertical;"></textarea>
+          </div>
+          <div style="text-align: right;">
+            <button type="submit" class="button">Send Message</button>
+          </div>
+        </form>
+        <!-- End Contact Form -->
       </div>
     </dialog>
     <footer>
