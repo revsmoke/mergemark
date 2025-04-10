@@ -191,6 +191,12 @@ footer {
   text-transform: lowercase;
 }
 
+.file-section img {
+  max-width: 100%;
+  height: auto;
+  margin-bottom: var(--spacing-sm);
+}
+
 .controls {
   background-color: white;
   padding: var(--spacing-lg);
@@ -583,8 +589,33 @@ footer {
     height: auto;
   }
 }
-  </style>
-  <script src="https://kit.fontawesome.com/c3c35d722d.js" crossorigin="anonymous"></script>
+
+/* Add styles for error reporting */
+.error-container {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background-color: #fed7d7; /* Light red background */
+  border: 1px solid var(--danger-color);
+  border-radius: var(--border-radius);
+  color: #9b2c2c; /* Darker red text */
+}
+
+.error-container:empty {
+  display: none; /* Hide if empty */
+}
+
+.error-message {
+  margin-bottom: var(--spacing-xs);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.error-message:last-child {
+  margin-bottom: 0;
+}
+/* End error styles */
+    </style>
+    <script src="https://kit.fontawesome.com/c3c35d722d.js" crossorigin="anonymous"></script>
   </head>
   <body>
     <nav>
@@ -633,6 +664,10 @@ footer {
           <span class="loading-indicator"></span>
         </div>
       </div>
+
+      <!-- Add Error Message Container -->
+      <div id="errorMessages" class="error-container no-print"></div>
+      <!-- End Error Message Container -->
 
       <div
         id="reorderContainer"
@@ -751,7 +786,8 @@ footer {
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     ></script>
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.35/jspdf.plugin.autotable.min.js"></script>
+    <script src="js/html2canvas.min.js"></script>
     <script defer>
       document.addEventListener("DOMContentLoaded", function () {
         // --- DOM Elements ---
@@ -782,6 +818,7 @@ footer {
         const contactLink = document.getElementById("contactLink");
         const helpLink = document.getElementById("helpLink");
         const helpDetails = document.getElementById("helpDetails");
+        const errorMessagesContainer = document.getElementById("errorMessages");
 
         // --- State Variables ---
         let draggedLi = null;
@@ -814,105 +851,223 @@ footer {
           exportMdButton.disabled = !hasFiles;
         }
 
-        // --- File Handling ---
+        function clearErrors() {
+          errorMessagesContainer.innerHTML = '';
+          errorMessagesContainer.style.display = 'none';
+        }
+
+        function displayError(message) {
+          const errorElement = document.createElement('p');
+          errorElement.className = 'error-message';
+          errorElement.textContent = message;
+          errorMessagesContainer.appendChild(errorElement);
+          errorMessagesContainer.style.display = 'block';
+          console.error("Error Displayed: ", message);
+        }
+
+        // --- NEW Image Handling Helpers ---
+
+        // Fetches an image URL and converts it to a Base64 Data URL
+        async function fetchImageAsBase64(url) {
+            try {
+                // Basic check for existing data URLs
+                if (url.startsWith('data:image')) {
+                    return url;
+                }
+
+                // Add timestamp to try bypassing cache if needed, though browser cache might still interfere
+                // const cacheBusterUrl = url + (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+
+                const response = await fetch(url); // Use default cache behavior first
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status} for URL: ${url}`);
+                }
+                const blob = await response.blob();
+
+                // Ensure it's an image blob
+                if (!blob.type.startsWith('image/')) {
+                    throw new Error(`Fetched resource is not an image type (${blob.type}) for URL: ${url}`);
+                }
+
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = (error) => reject(new Error(`FileReader error for URL ${url}: ${error}`));
+                    reader.readAsDataURL(blob);
+                });
+            } catch (error) {
+                 // Log specific error but re-throw or return an indicator
+                console.error(`Failed to fetch or convert image ${url}:`, error);
+                 displayError(`Could not load image: ${url}. Reason: ${error.message}. It might be blocked by CORS or unavailable.`);
+                return null; // Return null to indicate failure
+            }
+        }
+
+        // Finds images within an element and updates their src to Base64
+        async function processImagesInElement(element) {
+            const images = element.querySelectorAll('img');
+            const promises = [];
+
+            images.forEach(img => {
+                const originalSrc = img.getAttribute('src');
+                 if (originalSrc && !originalSrc.startsWith('data:image')) {
+                    // Create a promise for each image conversion
+                     const promise = fetchImageAsBase64(originalSrc).then(base64Url => {
+                        if (base64Url) {
+                             img.src = base64Url; // Update the src attribute directly
+                         } else {
+                             // Optional: Handle failed images (e.g., show placeholder, remove img)
+                             img.alt = `(Failed to load: ${img.alt || originalSrc})`;
+                             // img.style.display = 'none'; // Or hide it
+                         }
+                    });
+                    promises.push(promise);
+                 }
+            });
+
+            // Wait for all image conversions for this element to settle
+            await Promise.allSettled(promises);
+         }
+
+        // --- File Handling (Modified) ---
         function processFiles(files) {
-          showLoading(true, "Loading Files...");
+          showLoading(true, "Loading & Processing Files..."); // Updated text
+          clearErrors();
+
           contentContainer.innerHTML = "";
           reorderList.innerHTML = "";
           sectionCounter = 0;
           let fileArray = Array.from(files);
-          fileArray = fileArray.filter(
-            (file) =>
-              file.type === "text/plain" ||
-              file.type === "text/markdown" ||
-              file.name.endsWith(".txt") ||
-              file.name.endsWith(".md")
-          );
-          if (fileArray.length === 0) {
-            showLoading(false);
-            updateUIState();
-            if (files.length > 0) {
-              alert("No valid .txt or .md files found.");
+          const skippedFiles = [];
+          const validFiles = fileArray.filter(file => {
+                const isValid = file.type === "text/plain" ||
+                       file.type === "text/markdown" ||
+                       file.name.toLowerCase().endsWith(".txt") ||
+                       file.name.toLowerCase().endsWith(".md");
+                if (!isValid) {
+                    skippedFiles.push(file.name);
+                }
+                return isValid;
+           });
+           if (skippedFiles.length > 0) { 
+               displayError(`Skipped ${skippedFiles.length} file(s) due to invalid type (only .txt or .md allowed): ${skippedFiles.join(', ')}`);
             }
-            return;
-          }
-          fileArray.sort((a, b) => a.name.localeCompare(b.name));
-          let filesProcessed = 0;
-          fileArray.forEach((file) => {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-              try {
-                const fileContent = e.target.result;
-                const sectionId = "section_" + sectionCounter++;
-                const section = document.createElement("section");
-                section.className = "file-section";
-                section.id = sectionId;
-                section.dataset.rawContent = fileContent;
-                section.dataset.fileName = file.name;
-                const header = document.createElement("h2");
-                header.textContent = file.name;
-                section.appendChild(header);
-                if (file.name.toLowerCase().endsWith(".md")) {
-                  const contentDiv = document.createElement("div");
-                  contentDiv.innerHTML = marked.parse(fileContent);
-                  section.appendChild(contentDiv);
-                } else {
-                  const pre = document.createElement("pre");
-                  pre.textContent = fileContent;
-                  section.appendChild(pre);
-                }
-                contentContainer.appendChild(section);
-                const li = document.createElement("li");
-                li.setAttribute("data-section-id", sectionId);
-                li.setAttribute("draggable", true);
-                li.setAttribute("tabindex", "0");
-                const fileNameSpan = document.createElement("span");
-                fileNameSpan.textContent = file.name;
-                fileNameSpan.style.overflow = "hidden";
-                fileNameSpan.style.textOverflow = "ellipsis";
-                fileNameSpan.style.whiteSpace = "nowrap";
-                fileNameSpan.style.marginRight = "10px";
-                const deleteBtn = document.createElement("button");
-                deleteBtn.className = "delete-btn";
-                deleteBtn.textContent = "Delete";
-                deleteBtn.type = "button";
-                deleteBtn.addEventListener("click", (event) => {
-                  event.stopPropagation();
-                  showConfirmation("delete", {
-                    sectionId: sectionId,
-                    fileName: file.name,
-                  });
-                });
-                li.appendChild(fileNameSpan);
-                li.appendChild(deleteBtn);
-                addLiDragAndDropHandlers(li);
-                reorderList.appendChild(li);
-              } catch (error) {
-                console.error(`Error processing file ${file.name}:`, error);
-                alert(
-                  `Error processing file: ${file.name}. It might be skipped.`
-                );
-              } finally {
-                filesProcessed++;
-                if (filesProcessed === fileArray.length) {
-                  showLoading(false);
-                  updateSectionsOrderFromList();
-                  updateUIState();
-                }
-              }
-            };
-            reader.onerror = function (e) {
-              console.error("Error reading file:", file.name, e);
-              alert(`Error reading file: ${file.name}. It will be skipped.`);
-              filesProcessed++;
-              if (filesProcessed === fileArray.length) {
+           if (validFiles.length === 0) { 
                 showLoading(false);
                 updateUIState();
-              }
-            };
-            reader.readAsText(file);
+                return;
+            }
+          // Clear containers before processing starts
+          contentContainer.innerHTML = ""; 
+          reorderList.innerHTML = "";
+          sectionCounter = 0;
+
+           validFiles.sort((a, b) => a.name.localeCompare(b.name));
+           // let filesProcessed = 0; // Replaced by Promise tracking
+           const allFileProcessingPromises = []; // Array to hold promises for each file's processing
+
+          validFiles.forEach((file) => {
+            // Wrap the entire file processing in a promise
+             const filePromise = new Promise(async (resolveFile, rejectFile) => {
+                 const reader = new FileReader();
+
+                 reader.onload = async function (e) { // Make onload async
+                    const sectionId = "section_" + sectionCounter++; // Generate ID early for potential error cleanup
+                    try {
+                        const fileContent = e.target.result;
+                        const section = document.createElement("section");
+                        section.className = "file-section";
+                        section.id = sectionId;
+                        section.dataset.rawContent = fileContent;
+                        section.dataset.fileName = file.name;
+
+                        const header = document.createElement("h2");
+                        header.textContent = file.name;
+                        section.appendChild(header);
+
+                        let contentElement; // To hold the div or pre
+
+                        if (file.name.toLowerCase().endsWith(".md")) {
+                            const contentDiv = document.createElement("div");
+                            contentDiv.innerHTML = marked.parse(fileContent); // Initial parse
+                            section.appendChild(contentDiv);
+                            contentElement = contentDiv;
+
+                            // --> Process images AFTER initial parse
+                             showLoading(true, `Processing images in ${file.name}...`); // Give feedback
+                            await processImagesInElement(contentDiv);
+                             showLoading(true, "Loading & Processing Files..."); // Reset loading text
+                            // <-- End image processing
+
+                        } else {
+                            const pre = document.createElement("pre");
+                            pre.textContent = fileContent;
+                            section.appendChild(pre);
+                            contentElement = pre;
+                        }
+                        contentContainer.appendChild(section);
+
+                        // Create list item... 
+                        const li = document.createElement("li");
+                        li.setAttribute("data-section-id", sectionId);
+                        li.setAttribute("draggable", true);
+                        li.setAttribute("tabindex", "0");
+                        const fileNameSpan = document.createElement("span");
+                        fileNameSpan.textContent = file.name;
+                        fileNameSpan.style.overflow = "hidden";
+                        fileNameSpan.style.textOverflow = "ellipsis";
+                        fileNameSpan.style.whiteSpace = "nowrap";
+                        fileNameSpan.style.marginRight = "10px";
+                        const deleteBtn = document.createElement("button");
+                        deleteBtn.className = "delete-btn";
+                        deleteBtn.textContent = "Delete";
+                        deleteBtn.type = "button";
+                        deleteBtn.addEventListener("click", (event) => {
+                          event.stopPropagation();
+                          showConfirmation("delete", { sectionId: sectionId, fileName: file.name });
+                        });
+                        li.appendChild(fileNameSpan);
+                        li.appendChild(deleteBtn);
+                        addLiDragAndDropHandlers(li);
+                        reorderList.appendChild(li);
+                        resolveFile(); // Resolve the promise for this file
+
+                    } catch (error) {
+                         displayError(`Error processing file "${file.name}": ${error.message}`);
+                         const problemSection = document.getElementById(sectionId);
+                         if (problemSection) problemSection.remove();
+                         // Don't remove LI here as it might not exist yet
+                         rejectFile(error); // Reject the promise for this file
+                     }
+                 };
+
+                 reader.onerror = function (e) {
+                     const errorMsg = `Error reading file "${file.name}". Details: ${e.target.error || 'Unknown read error'}`;
+                     displayError(errorMsg);
+                     rejectFile(new Error(errorMsg)); // Reject the promise for this file
+                 };
+
+                 reader.readAsText(file);
+             }); // End of filePromise
+
+            allFileProcessingPromises.push(filePromise);
+
+          }); // End loop through validFiles
+
+          // Wait for all files to be processed (including image conversion)
+          Promise.allSettled(allFileProcessingPromises).then(() => {
+              showLoading(false);
+              updateSectionsOrderFromList(); // Update order based on LI elements
+              updateUIState();
+              console.log("All files processed.");
+           }).catch(error => {
+              // This catch might be redundant if individual errors are handled, but good for safety
+              console.error("Error during batch file processing:", error);
+              showLoading(false); // Ensure loading is hidden on batch error
+              updateUIState();
           });
-        }
+        } // End processFiles function
 
         // --- Reordering Logic (No changes needed) ---
         function updateSectionsOrderFromList() {
@@ -1089,37 +1244,59 @@ footer {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
           } catch (error) {
-            console.error("Error creating download:", error);
-            alert(`Failed to initiate download. Error: ${error.message}`);
+            displayError(`Failed to initiate download for "${filename}". Error: ${error.message}`);
           }
         }
 
-        // --- NEW Export Functions ---
+        // --- Export Functions (Modified exportCombinedHtml) ---
         function exportCombinedHtml() {
-          if (contentContainer.children.length === 0) {
-            alert("No content to export.");
-            return;
-          }
-          showLoading(true, "Exporting HTML...");
-          try {
-            // Basic HTML structure
-            const htmlPrefix = `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>MergeMark Combined Content</title>\n  <style>\n    body { font-family: sans-serif; line-height: 1.6; margin: 2em; }\n    .file-section { margin-bottom: 2em; padding-top: 1em; border-top: 1px solid #eee; }\n    .file-section:first-child { border-top: none; padding-top: 0; }\n    h2 { margin-bottom: 0.5em; font-size: 1.5em; }\n    pre { white-space: pre-wrap; word-wrap: break-word; background-color: #f8f8f8; padding: 1em; border-radius: 4px; border: 1px solid #ddd; }\n  </style>\n</head>\n<body>\n<h1>Combined Content</h1>\n`;
-            const htmlSuffix = "\n</body>\n</html>";
-            const combinedHtml = htmlPrefix + contentContainer.innerHTML + htmlSuffix;
+            clearErrors();
+            if (contentContainer.children.length === 0) {
+                displayError("No content available to export as HTML.");
+                return;
+            }
+            showLoading(true, "Exporting HTML...");
+            try {
+                // --> Get the page's main CSS styles
+                let pageStyles = '';
+                const styleElement = document.querySelector('head > style'); // Adjust selector if needed
+                if (styleElement) {
+                    pageStyles = styleElement.innerHTML;
+                } else {
+                    console.warn("Could not find main style element to copy for HTML export.");
+                    // Optionally provide fallback minimal styles here if needed
+                }
+                // <-- End getting styles
 
-            downloadFile("MergeMark_Combined.html", combinedHtml, "text/html;charset=utf-8");
+                // Updated HTML structure with full styles
+                const htmlPrefix = `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>MergeMark Combined Content</title>\n  <style>\n    /* Copied styles from MergeMark page */\n    ${pageStyles}\n\n    /* Additional styles for exported view if needed */\n    body { padding: var(--container-padding, 2rem); background-color: white; } \n    .no-print { display: none !important; } /* Ensure controls etc. are hidden */ \n    .container { max-width: var(--max-content-width, 900px); margin: 0 auto; } /* Center content */
+  </style>\n</head>\n<body>\n  <div class="container">\n    <h1>Combined Content</h1>\n`; // Added container div
+                const htmlSuffix = "\n  </div>\n</body>\n</html>"; // Closed container div
 
-          } catch (error) {
-            console.error("Error exporting HTML:", error);
-            alert(`An error occurred during HTML export. Error: ${error.message}`);
-          } finally {
-            showLoading(false);
-          }
+                // Create a temporary div to get the correctly ordered HTML
+                const tempDiv = document.createElement('div');
+                const sections = contentContainer.querySelectorAll(".file-section");
+                sections.forEach(section => {
+                    tempDiv.appendChild(section.cloneNode(true)); // Use clones to avoid moving elements
+                });
+
+                const combinedHtmlContent = tempDiv.innerHTML;
+                const fullHtml = htmlPrefix + combinedHtmlContent + htmlSuffix;
+
+                downloadFile("MergeMark_Combined.html", fullHtml, "text/html;charset=utf-8");
+
+            } catch (error) {
+                 displayError(`An error occurred during HTML export. Error: ${error.message}`);
+                 console.error("Error exporting HTML:", error); // Keep console log
+            } finally {
+                 showLoading(false);
+            }
         }
 
         function exportCombinedMarkdown() {
+          clearErrors();
           if (contentContainer.children.length === 0) {
-            alert("No content to export.");
+            displayError("No content available to export as Markdown.");
             return;
           }
           showLoading(true, "Exporting Markdown...");
@@ -1139,8 +1316,7 @@ footer {
             downloadFile("MergeMark_Combined.md", combinedMarkdown, "text/markdown;charset=utf-8");
 
           } catch (error) {
-            console.error("Error exporting Markdown:", error);
-            alert(`An error occurred during Markdown export. Error: ${error.message}`);
+            displayError(`An error occurred during Markdown export. Error: ${error.message}`);
           } finally {
             showLoading(false);
           }
@@ -1149,120 +1325,86 @@ footer {
         // --- Event Listeners ---
         fileInput.addEventListener("change", function () {
           if (fileInput.files.length > 0) {
+            clearErrors();
             processFiles(fileInput.files);
           }
         });
 
         // --- REWRITTEN PDF Generation using jsPDF.text() ---
         generateButton.addEventListener("click", function () {
+          // ---> THIS WILL BE REPLACED in the next step <--- 
+          clearErrors();
           showLoading(true, "Generating PDF...");
-
-          if (typeof jspdf === "undefined") {
-            alert("Error: jsPDF library not loaded. Cannot generate PDF.");
-            showLoading(false);
-            return;
-          }
-          const { jsPDF } = jspdf;
-
-          try {
-            const doc = new jsPDF({
-              orientation: "p",
-              unit: "pt",
-              format: "a4",
-            });
-
-            const pageHeight = doc.internal.pageSize.height;
-            const pageWidth = doc.internal.pageSize.width;
-            const margin = 40;
-            const maxLineWidth = pageWidth - 2 * margin;
-            const headerFontSize = 14;
-            const bodyFontSize = 10;
-            const defaultLineHeight = bodyFontSize * 1.2;
-            const headerLineHeight = headerFontSize * 1.2;
-            const sectionSpacing = defaultLineHeight * 1.5;
-
-            let y = margin;
-
-            function addWrappedText(
-              text,
-              fontSize,
-              lineHeight,
-              isBold = false
-            ) {
-              if (y + lineHeight > pageHeight - margin) {
-                doc.addPage();
-                y = margin;
-              }
-
-              doc.setFontSize(fontSize);
-              doc.setFont(undefined, isBold ? "bold" : "normal");
-
-              const lines = doc.splitTextToSize(text, maxLineWidth);
-
-              lines.forEach((line) => {
-                if (y + lineHeight > pageHeight - margin) {
-                  doc.addPage();
-                  y = margin;
-                }
-                doc.text(line, margin, y);
-                y += lineHeight;
-              });
-            }
-
-            const sections = contentContainer.querySelectorAll(".file-section");
-            if (sections.length === 0) {
-              alert("No content sections found to generate PDF.");
+          // OLD jsPDF.text() logic remains for now, but marked for replacement
+          if (typeof jspdf === "undefined") { 
+              displayError("Error: jsPDF library not loaded. Cannot generate PDF.");
               showLoading(false);
               return;
+           }
+          const { jsPDF } = jspdf;
+          try {
+             const doc = new jsPDF({
+                orientation: "p",
+                unit: "pt",
+                format: "a4",
+             });
+             const pageHeight = doc.internal.pageSize.height;
+             const pageWidth = doc.internal.pageSize.width;
+             const margin = 40;
+             const maxLineWidth = pageWidth - 2 * margin;
+             const headerFontSize = 14;
+             const bodyFontSize = 10;
+             const defaultLineHeight = bodyFontSize * 1.2;
+             const headerLineHeight = headerFontSize * 1.2;
+             const sectionSpacing = defaultLineHeight * 1.5;
+             let y = margin;
+
+             function addWrappedText(text, fontSize, lineHeight, isBold = false) {
+                if (y + lineHeight > pageHeight - margin) { doc.addPage(); y = margin; }
+                doc.setFontSize(fontSize);
+                doc.setFont(undefined, isBold ? "bold" : "normal");
+                const lines = doc.splitTextToSize(text, maxLineWidth);
+                lines.forEach((line) => {
+                    if (y + lineHeight > pageHeight - margin) { doc.addPage(); y = margin; }
+                    doc.text(line, margin, y);
+                    y += lineHeight;
+                });
             }
-
+            const sections = contentContainer.querySelectorAll(".file-section");
+            if (sections.length === 0) { 
+                displayError("No content sections found to generate PDF.");
+                showLoading(false);
+                return;
+             }
             sections.forEach((section, index) => {
-              const headerText = section.dataset.fileName || `Section ${index + 1}`;
-              
-              if (index > 0) {
-                y += sectionSpacing;
-              }
-
-              addWrappedText(
-                headerText,
-                headerFontSize,
-                headerLineHeight,
-                true
-              );
-              y += headerLineHeight * 0.3;
-
-              const contentElement =
-                section.querySelector("div") || section.querySelector("pre");
-              const contentText = contentElement
-                ? contentElement.innerText.trim()
-                : "";
-
-              if (contentText) {
-                addWrappedText(
-                  contentText,
-                  bodyFontSize,
-                  defaultLineHeight,
-                  false
-                );
-              }
-            });
-
-            doc.save("MergeMark_Text_Report.pdf");
-          } catch (error) {
-            console.error("Error generating PDF with jsPDF:", error);
-            alert(
-              `An error occurred while generating the PDF (using jsPDF.text). Please check the console. Error: ${error.message}`
-            );
-          } finally {
-            showLoading(false);
-          }
+                const headerText = section.dataset.fileName || `Section ${index + 1}`;
+                if (index > 0) { y += sectionSpacing; }
+                addWrappedText(headerText, headerFontSize, headerLineHeight, true);
+                y += headerLineHeight * 0.3;
+                const contentElement = section.querySelector("div") || section.querySelector("pre");
+                const contentText = contentElement ? contentElement.innerText.trim() : "";
+                if (contentText) {
+                    addWrappedText(contentText, bodyFontSize, defaultLineHeight, false);
+                }
+             });
+             // TEMPORARY placeholder alert
+             alert("PDF generation needs update for images. Using text-only for now.");
+             doc.save("MergeMark_Text_Report.pdf");
+          } catch (error) { 
+             displayError(`An error occurred while generating the PDF. Error: ${error.message}`);
+             console.error("Error generating PDF with jsPDF:", error); 
+           }
+          finally { showLoading(false); }
+          // ---> END PDF generation logic for this step <--- 
         });
 
         printButton.addEventListener("click", function () {
+          clearErrors();
           window.print();
         });
 
         clearAllButton.addEventListener("click", function () {
+          clearErrors();
           showConfirmation("clearAll");
         });
 
