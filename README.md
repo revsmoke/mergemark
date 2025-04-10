@@ -52,6 +52,6 @@ The application provides tools to manage the combined document:
 * **Syntax Highlighting:** Add syntax highlighting for code blocks within markdown sections, both in the preview and potentially in the formatted PDF output.
 * **User Themes/Styling:** Allow customization of the visual appearance.
 * **Local Persistence:** Use `localStorage` to save the current file list and order, allowing users to close and reopen the browser without losing their work.
-* **Image Handling:** Add support for images embedded in Markdown (consider challenges for PDF generation).
+* **Image Handling:** Add support for adding new images to the rendered HTML and then embed them in Combined Markdown for export as Markdown and export them the same as other images in the Combined HTML and the PDF (when we get that working). (consider challenges for PDF generation).
 * **Backend Processing Option:** For very large files or complex PDF generation tasks, consider adding an optional backend component (e.g., using Node.js or ColdFusion) to handle processing.
 * **Unit/Integration Tests:** Develop a test suite to ensure reliability.
