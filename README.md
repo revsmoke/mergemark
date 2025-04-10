@@ -49,9 +49,6 @@ The application provides tools to manage the combined document:
 
 * **[High Priority] Preserve Formatting in Generated PDF:** Modify the "Generate PDF" function (potentially using jsPDF's `html()` method or exploring other libraries/approaches) to create a PDF that accurately reflects the on-screen rendered markdown formatting (styles, lists, etc.).
 * **Implement Contact Form:** Add functionality to the contact modal (currently a placeholder) to allow users to send messages (would likely require a backend component).
-* **More Export Options:**
-  * Export as a single combined HTML file.
-  * Export as a single combined Markdown file.
 * **Syntax Highlighting:** Add syntax highlighting for code blocks within markdown sections, both in the preview and potentially in the formatted PDF output.
 * **User Themes/Styling:** Allow customization of the visual appearance.
 * **Local Persistence:** Use `localStorage` to save the current file list and order, allowing users to close and reopen the browser without losing their work.
