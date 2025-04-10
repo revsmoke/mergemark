@@ -616,6 +616,8 @@ footer {
         <button id="generateButton" class="button" disabled>
           Generate PDF (Text Only)
         </button>
+        <button id="exportHtmlButton" class="button" disabled>Export Combined HTML</button>
+        <button id="exportMdButton" class="button" disabled>Export Combined Markdown</button>
         <button id="clearAllButton" class="button warning" disabled>
           Clear All
         </button>
@@ -758,6 +760,8 @@ footer {
         const generateButton = document.getElementById("generateButton");
         const printButton = document.getElementById("printButton");
         const clearAllButton = document.getElementById("clearAllButton");
+        const exportHtmlButton = document.getElementById("exportHtmlButton");
+        const exportMdButton = document.getElementById("exportMdButton");
         const reorderList = document.getElementById(
           "document-section-reorder-list"
         );
@@ -765,16 +769,19 @@ footer {
         const reorderPlaceholder =
           document.getElementById("reorderPlaceholder");
         const confirmationModal = document.getElementById("confirmationModal");
-        const modalTitle = document.getElementById("modalTitle");
-        const modalMessage = document.getElementById("modalMessage");
+        const modalTitle = confirmationModal.querySelector(".modal-title");
+        const modalMessage = confirmationModal.querySelector(".modal-message");
         const confirmBtn = document.getElementById("confirmBtn");
         const cancelBtn = document.getElementById("cancelBtn");
         const closeConfirmationModal = document.getElementById("closeConfirmationModal");
         const dropZone = document.getElementById("dropZone");
         const loadingIndicator = document.getElementById("loadingIndicator");
+        const loadingIndicatorText = loadingIndicator.querySelector('span:first-child');
         const contactDialog = document.getElementById("contactDialog");
         const closeContactDialog = document.getElementById("closeContactDialog");
         const contactLink = document.getElementById("contactLink");
+        const helpLink = document.getElementById("helpLink");
+        const helpDetails = document.getElementById("helpDetails");
 
         // --- State Variables ---
         let draggedLi = null;
@@ -782,12 +789,15 @@ footer {
         let pendingAction = null;
         let itemToDelete = null;
 
-        // --- Utility Functions (showLoading, updateUIState - no changes) ---
-        function showLoading(isLoading) {
+        // --- Utility Functions ---
+        function showLoading(isLoading, actionText = "Processing...") {
+          loadingIndicatorText.textContent = actionText;
           loadingIndicator.style.display = isLoading ? "inline-flex" : "none";
           generateButton.disabled = isLoading;
           printButton.disabled = isLoading;
           clearAllButton.disabled = isLoading;
+          exportHtmlButton.disabled = isLoading;
+          exportMdButton.disabled = isLoading;
           fileInput.disabled = isLoading;
           reorderList.style.pointerEvents = isLoading ? "none" : "auto";
           reorderList.style.opacity = isLoading ? 0.7 : 1;
@@ -800,11 +810,13 @@ footer {
           generateButton.disabled = !hasFiles;
           clearAllButton.disabled = !hasFiles;
           printButton.disabled = !hasFiles;
+          exportHtmlButton.disabled = !hasFiles;
+          exportMdButton.disabled = !hasFiles;
         }
 
-        // --- File Handling (No changes needed) ---
+        // --- File Handling ---
         function processFiles(files) {
-          showLoading(true);
+          showLoading(true, "Loading Files...");
           contentContainer.innerHTML = "";
           reorderList.innerHTML = "";
           sectionCounter = 0;
@@ -835,6 +847,8 @@ footer {
                 const section = document.createElement("section");
                 section.className = "file-section";
                 section.id = sectionId;
+                section.dataset.rawContent = fileContent;
+                section.dataset.fileName = file.name;
                 const header = document.createElement("h2");
                 header.textContent = file.name;
                 section.appendChild(header);
@@ -1062,6 +1076,76 @@ footer {
           updateUIState();
         }
 
+        // --- Download Utility ---
+        function downloadFile(filename, content, mimeType) {
+          try {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a); // Required for Firefox
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          } catch (error) {
+            console.error("Error creating download:", error);
+            alert(`Failed to initiate download. Error: ${error.message}`);
+          }
+        }
+
+        // --- NEW Export Functions ---
+        function exportCombinedHtml() {
+          if (contentContainer.children.length === 0) {
+            alert("No content to export.");
+            return;
+          }
+          showLoading(true, "Exporting HTML...");
+          try {
+            // Basic HTML structure
+            const htmlPrefix = `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>MergeMark Combined Content</title>\n  <style>\n    body { font-family: sans-serif; line-height: 1.6; margin: 2em; }\n    .file-section { margin-bottom: 2em; padding-top: 1em; border-top: 1px solid #eee; }\n    .file-section:first-child { border-top: none; padding-top: 0; }\n    h2 { margin-bottom: 0.5em; font-size: 1.5em; }\n    pre { white-space: pre-wrap; word-wrap: break-word; background-color: #f8f8f8; padding: 1em; border-radius: 4px; border: 1px solid #ddd; }\n  </style>\n</head>\n<body>\n<h1>Combined Content</h1>\n`;
+            const htmlSuffix = "\n</body>\n</html>";
+            const combinedHtml = htmlPrefix + contentContainer.innerHTML + htmlSuffix;
+
+            downloadFile("MergeMark_Combined.html", combinedHtml, "text/html;charset=utf-8");
+
+          } catch (error) {
+            console.error("Error exporting HTML:", error);
+            alert(`An error occurred during HTML export. Error: ${error.message}`);
+          } finally {
+            showLoading(false);
+          }
+        }
+
+        function exportCombinedMarkdown() {
+          if (contentContainer.children.length === 0) {
+            alert("No content to export.");
+            return;
+          }
+          showLoading(true, "Exporting Markdown...");
+          try {
+            let combinedMarkdown = `# MergeMark Combined Markdown\n\n`;
+            const sections = contentContainer.querySelectorAll(".file-section");
+
+            sections.forEach((section) => {
+              const fileName = section.dataset.fileName || "Untitled Section";
+              const rawContent = section.dataset.rawContent || "";
+
+              combinedMarkdown += `## ${fileName}\n\n`;
+              combinedMarkdown += rawContent;
+              combinedMarkdown += `\n\n---\n\n`;
+            });
+
+            downloadFile("MergeMark_Combined.md", combinedMarkdown, "text/markdown;charset=utf-8");
+
+          } catch (error) {
+            console.error("Error exporting Markdown:", error);
+            alert(`An error occurred during Markdown export. Error: ${error.message}`);
+          } finally {
+            showLoading(false);
+          }
+        }
+
         // --- Event Listeners ---
         fileInput.addEventListener("change", function () {
           if (fileInput.files.length > 0) {
@@ -1071,18 +1155,17 @@ footer {
 
         // --- REWRITTEN PDF Generation using jsPDF.text() ---
         generateButton.addEventListener("click", function () {
-          showLoading(true);
+          showLoading(true, "Generating PDF...");
 
           if (typeof jspdf === "undefined") {
             alert("Error: jsPDF library not loaded. Cannot generate PDF.");
             showLoading(false);
             return;
           }
-          const { jsPDF } = jspdf; // Get the constructor
+          const { jsPDF } = jspdf;
 
           try {
             const doc = new jsPDF({
-              // Default: Portrait, pt, A4
               orientation: "p",
               unit: "pt",
               format: "a4",
@@ -1090,17 +1173,16 @@ footer {
 
             const pageHeight = doc.internal.pageSize.height;
             const pageWidth = doc.internal.pageSize.width;
-            const margin = 40; // Page margin in points
-            const maxLineWidth = pageWidth - 2 * margin; // Max width for text
+            const margin = 40;
+            const maxLineWidth = pageWidth - 2 * margin;
             const headerFontSize = 14;
             const bodyFontSize = 10;
             const defaultLineHeight = bodyFontSize * 1.2;
             const headerLineHeight = headerFontSize * 1.2;
-            const sectionSpacing = defaultLineHeight * 1.5; // Extra space between sections
+            const sectionSpacing = defaultLineHeight * 1.5;
 
-            let y = margin; // Current Y position, starts at top margin
+            let y = margin;
 
-            // Function to add text lines and handle page breaks
             function addWrappedText(
               text,
               fontSize,
@@ -1108,29 +1190,25 @@ footer {
               isBold = false
             ) {
               if (y + lineHeight > pageHeight - margin) {
-                // Check if space needed exceeds page height
                 doc.addPage();
-                y = margin; // Reset Y for new page
+                y = margin;
               }
 
               doc.setFontSize(fontSize);
-              doc.setFont(undefined, isBold ? "bold" : "normal"); // Set font style
+              doc.setFont(undefined, isBold ? "bold" : "normal");
 
-              const lines = doc.splitTextToSize(text, maxLineWidth); // Wrap text
+              const lines = doc.splitTextToSize(text, maxLineWidth);
 
               lines.forEach((line) => {
                 if (y + lineHeight > pageHeight - margin) {
-                  // Re-check for each line
                   doc.addPage();
                   y = margin;
                 }
                 doc.text(line, margin, y);
-                y += lineHeight; // Move Y down
+                y += lineHeight;
               });
-              // y += lineHeight * 0.2; // Add tiny space after block
             }
 
-            // Iterate through the actual content sections in order
             const sections = contentContainer.querySelectorAll(".file-section");
             if (sections.length === 0) {
               alert("No content sections found to generate PDF.");
@@ -1139,13 +1217,8 @@ footer {
             }
 
             sections.forEach((section, index) => {
-              // --- Add Section Header (Filename) ---
-              const headerElement = section.querySelector("h2");
-              const headerText = headerElement
-                ? headerElement.textContent.trim()
-                : `Section ${index + 1}`;
-
-              // Add space before new section header (except first one)
+              const headerText = section.dataset.fileName || `Section ${index + 1}`;
+              
               if (index > 0) {
                 y += sectionSpacing;
               }
@@ -1155,13 +1228,11 @@ footer {
                 headerFontSize,
                 headerLineHeight,
                 true
-              ); // Add header text (bold)
-              y += headerLineHeight * 0.3; // Add a bit more space after header
+              );
+              y += headerLineHeight * 0.3;
 
-              // --- Add Section Content ---
               const contentElement =
                 section.querySelector("div") || section.querySelector("pre");
-              // Use innerText to try and preserve line breaks from <pre> tags better
               const contentText = contentElement
                 ? contentElement.innerText.trim()
                 : "";
@@ -1172,30 +1243,32 @@ footer {
                   bodyFontSize,
                   defaultLineHeight,
                   false
-                ); // Add body text
+                );
               }
-            }); // End loop through sections
+            });
 
-            doc.save("MergeMark_Text_Report.pdf"); // Save the PDF
+            doc.save("MergeMark_Text_Report.pdf");
           } catch (error) {
             console.error("Error generating PDF with jsPDF:", error);
             alert(
               `An error occurred while generating the PDF (using jsPDF.text). Please check the console. Error: ${error.message}`
             );
           } finally {
-            showLoading(false); // Hide loading indicator
+            showLoading(false);
           }
         });
 
         printButton.addEventListener("click", function () {
-          window.print(); // Trigger browser's print/save PDF dialog
+          window.print();
         });
 
         clearAllButton.addEventListener("click", function () {
           showConfirmation("clearAll");
         });
 
-        // Modal Button Listeners
+        exportHtmlButton.addEventListener("click", exportCombinedHtml);
+        exportMdButton.addEventListener("click", exportCombinedMarkdown);
+
         contactLink.addEventListener("click", function (e) {
           e.preventDefault();
           contactDialog.showModal();
@@ -1206,7 +1279,15 @@ footer {
         confirmBtn.addEventListener("click", performConfirmedAction);
         cancelBtn.addEventListener("click", closeConfirmation);
         closeConfirmationModal.addEventListener("click", closeConfirmation);
-        // --- Initial Setup ---
+
+        helpLink.addEventListener("click", (e) => {
+          e.preventDefault();
+          helpDetails.open = !helpDetails.open;
+          if (helpDetails.open) {
+            helpDetails.scrollIntoView({ behavior: 'smooth' });
+          }
+        });
+
         updateUIState();
       });
     </script>
