@@ -3,3 +3,4 @@
 .vscode
 mergemark_uploads/*
 fonts/*
+**/CLAUDE.local.md
