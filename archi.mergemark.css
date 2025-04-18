@@ -167,7 +167,9 @@
     font-family: Alleyn, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     line-height: 1.6;
   }
-
+#loadingIndicator {
+  display: none;
+}
 
 /* ====== Typography ====== */
 .intro-text {
@@ -604,10 +606,6 @@ input[type="file"] {
   gap: 5px;
 }
 
-.delete-btn::before {
-  /* Style for the icon if needed, currently handled by innerHTML */
-  /* Example: content: '\f2ed'; font-family: 'Font Awesome 6 Free'; */
-}
 
 .delete-btn:hover {
   background-color: #c53030;
@@ -663,6 +661,8 @@ input[type="file"] {
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--primary-color) var(--gray-200);
+  scroll-snap-type: y mandatory;
+  scroll-snap-align: start;
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   background-color: var(--background-color);
